@@ -4,7 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 export async function POST(request) {
   try {
-    const { name, email, password } = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Request body JSON tidak valid" },
+        { status: 400 },
+      );
+    }
+
+    const { name, email, password } = body;
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -35,6 +43,10 @@ export async function POST(request) {
       { status: 201 },
     );
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Register API error:", error);
+    return NextResponse.json(
+      { error: "Terjadi kesalahan server" },
+      { status: 500 },
+    );
   }
 }
