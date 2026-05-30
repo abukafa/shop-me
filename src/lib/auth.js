@@ -1,12 +1,12 @@
-import bcrypt from "bcryptjs";
-
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key-shop-me";
 
 export async function hashPassword(password) {
+  const bcrypt = await import("bcryptjs");
   return await bcrypt.hash(password, 10);
 }
 
 export async function comparePassword(password, hashedPassword) {
+  const bcrypt = await import("bcryptjs");
   return await bcrypt.compare(password, hashedPassword);
 }
 
