@@ -53,9 +53,9 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md z-10 glass-panel p-8 sm:p-10 rounded-3xl shadow-glass border border-slate-800">
         <div className="text-center mb-8">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-tr from-primary-500 to-accent-orange flex items-center justify-center font-display font-extrabold text-xl shadow-glow-primary mx-auto mb-4">
+          <Link href="/" className="h-12 w-12 rounded-xl bg-gradient-to-tr from-primary-500 to-accent-orange flex items-center justify-center font-display font-extrabold text-xl shadow-glow-primary mx-auto mb-4">
             S
-          </div>
+          </Link>
           <h1 className="font-display font-bold text-2xl mb-1">
             Selamat Datang Kembali
           </h1>

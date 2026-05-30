@@ -14,7 +14,7 @@ export async function middleware(request) {
       return NextResponse.redirect(loginUrl);
     }
 
-    const decoded = verifyToken(token);
+    const decoded = await verifyToken(token);
     if (!decoded) {
       const response = NextResponse.redirect(new URL("/login", request.url));
       response.cookies.delete("token");
@@ -26,7 +26,7 @@ export async function middleware(request) {
     const tokenCookie = request.cookies.get("token");
     const token = tokenCookie?.value;
 
-    if (token && verifyToken(token)) {
+    if (token && (await verifyToken(token))) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }

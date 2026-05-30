@@ -60,9 +60,9 @@ export default function RegisterPage() {
         <div className="absolute bg-glow-purple w-[400px] h-[400px] rounded-full bottom-[-10%] right-[-10%]" />
 
         <div className="z-10 max-w-md text-center">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-primary-500 to-accent-orange flex items-center justify-center font-display font-extrabold text-3xl shadow-glow-primary mx-auto mb-8">
+          <Link href="/" className="h-16 w-16 rounded-2xl bg-gradient-to-tr from-primary-500 to-accent-orange flex items-center justify-center font-display font-extrabold text-3xl shadow-glow-primary mx-auto mb-8">
             S
-          </div>
+          </Link>
           <h2 className="font-display font-extrabold text-3xl mb-4 leading-tight">
             Gabung bersama Ribuan Pedagang Sukses
           </h2>
