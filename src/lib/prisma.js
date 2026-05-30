@@ -1,15 +1,46 @@
 import { PrismaClient } from "@/generated/prisma/client";
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 
 const globalForPrisma = global;
-const sqliteUrl = process.env.DATABASE_URL || "file:./dev.db";
-const sqliteAdapter = new PrismaBetterSqlite3({ url: sqliteUrl });
 
-export const prisma =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    adapter: sqliteAdapter,
-    log: ["query"],
-  });
+let prismaInstance;
+
+if (typeof window === "undefined") {
+  const dbUrlString = process.env.DATABASE_URL;
+  if (!dbUrlString) {
+    throw new Error("DATABASE_URL environment variable is not defined");
+  }
+
+  try {
+    const url = new URL(dbUrlString);
+    const host = url.hostname;
+    const port = Number(url.port) || 3306;
+    const user = decodeURIComponent(url.username);
+    const password = decodeURIComponent(url.password);
+    const database = url.pathname.substring(1);
+
+    const adapter = new PrismaMariaDb({
+      host,
+      port,
+      user,
+      password,
+      database,
+      connectionLimit: 5,
+    });
+
+    prismaInstance = globalForPrisma.prisma || new PrismaClient({
+      adapter,
+      log: ["query"],
+    });
+  } catch (error) {
+    console.error("Failed to initialize PrismaMariaDb adapter:", error);
+    throw error;
+  }
+} else {
+  prismaInstance = globalForPrisma.prisma || new PrismaClient();
+}
+
+export const prisma = prismaInstance;
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
