@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  ShoppingBag,
-  Receipt,
-  Users,
-  Key,
-  ExternalLink,
-  AlertTriangle,
-  RefreshCw,
-} from "lucide-react";
+import { ShoppingBag, Receipt, Users, Key, ExternalLink, AlertTriangle, RefreshCw } from "lucide-react";
 import StatCard from "@/components/dashboard/stat-card";
 import RefreshStatusModal from "@/components/dashboard/RefreshStatusModal";
 
 export default function DashboardOverview() {
   const [shop, setShop] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // States for token refresh
@@ -23,26 +16,35 @@ export default function DashboardOverview() {
   const [refreshStatus, setRefreshStatus] = useState("");
   const [refreshError, setRefreshError] = useState("");
 
-  const checkConnection = async () => {
+  const loadDashboardData = async () => {
     try {
-      const res = await fetch("/api/shop");
-      if (res.ok) {
-        const data = await res.json();
-        if (data.isConnected) {
-          setShop(data);
+      const [shopRes, profileRes] = await Promise.all([
+        fetch("/api/shop"),
+        fetch("/api/auth/me")
+      ]);
+
+      if (shopRes.ok) {
+        const shopData = await shopRes.json();
+        if (shopData.isConnected) {
+          setShop(shopData);
         } else {
           setShop(null);
         }
       }
+
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        setProfile(profileData.user);
+      }
     } catch (err) {
-      console.error("Failed to load shop info", err);
+      console.error("Failed to load dashboard data", err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    checkConnection();
+    loadDashboardData();
   }, []);
 
   const handleRefreshToken = async () => {
@@ -58,9 +60,7 @@ export default function DashboardOverview() {
         setRefreshStatus("success");
       } else {
         setRefreshStatus("error");
-        setRefreshError(
-          data.error || data.message || "Gagal menyegarkan token Shopee.",
-        );
+        setRefreshError(data.error || data.message || "Gagal menyegarkan token Shopee.");
       }
     } catch (err) {
       setRefreshStatus("error");
@@ -89,11 +89,12 @@ export default function DashboardOverview() {
 
   return (
     <div className="space-y-8">
+      {/* Title Header with Welcome Text moved from Topbar */}
       <div>
-        <h1 className="font-display font-extrabold text-3xl tracking-tight">
-          Ringkasan Dasbor
+        <h1 className="font-display font-extrabold text-3xl tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+          Selamat Datang, {profile?.name || "..."}
         </h1>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-400 text-sm mt-1">
           Lihat performa toko Shopee dan kelola integrasi akun Anda.
         </p>
       </div>
@@ -138,13 +139,10 @@ export default function DashboardOverview() {
                       Sesi Koneksi Shopee Kedaluwarsa
                     </h3>
                     <p className="text-slate-400 text-xs mt-1.5 leading-relaxed max-w-xl">
-                      Token akses API Shopee Anda kedaluwarsa setelah 4 jam demi
-                      keamanan. Silakan segarkan (refresh) token Anda untuk
-                      memulihkan sinkronisasi data otomatis dengan Shopee.
+                      Token akses API Shopee Anda kedaluwarsa setelah 4 jam demi keamanan. Silakan segarkan (refresh) token Anda untuk memulihkan sinkronisasi data otomatis dengan Shopee.
                     </p>
                     <p className="text-[10px] text-slate-500 mt-2 font-mono uppercase tracking-wider">
-                      ID TOKO: {shop.shopId} | Terakhir Diperbarui:{" "}
-                      {new Date(shop.updatedAt).toLocaleString("id-ID")}
+                      ID TOKO: {shop.shopId} | Terakhir Diperbarui: {new Date(shop.updatedAt).toLocaleString("id-ID")}
                     </p>
                   </div>
                 </div>
@@ -154,10 +152,7 @@ export default function DashboardOverview() {
                     disabled={refreshing}
                     className="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <RefreshCw
-                      size={16}
-                      className={refreshing ? "animate-spin" : ""}
-                    />
+                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                     {refreshing ? "Menyegarkan..." : "Segarkan Token"}
                   </button>
                   <a
@@ -198,10 +193,7 @@ export default function DashboardOverview() {
                     disabled={refreshing}
                     className="px-5 py-3 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-300 font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
                   >
-                    <RefreshCw
-                      size={16}
-                      className={refreshing ? "animate-spin" : ""}
-                    />
+                    <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
                     Refresh Token
                   </button>
                   <a
