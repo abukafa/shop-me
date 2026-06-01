@@ -25,7 +25,7 @@ export default function Topbar() {
   }, []);
 
   return (
-    <header className="h-16 border-b border-slate-800/60 flex items-center justify-between px-8 bg-[#090d16]/50 backdrop-blur-md sticky top-0 z-10 ml-64">
+    <header className="h-16 border-b border-slate-800/60 flex items-center justify-between px-8 bg-[#090d16]/50 backdrop-blur-md ml-64">
       <div>
         <h2 className="font-display font-bold text-lg text-slate-200">
           Selamat Datang, {profile?.name || "Loading..."}

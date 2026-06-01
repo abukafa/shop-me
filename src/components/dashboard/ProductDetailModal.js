@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   ChevronLeft,
@@ -18,6 +19,18 @@ import {
   Info,
   ExternalLink,
 } from "lucide-react";
+
+// SSR-Safe React Portal helper component
+function ClientPortal({ children }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  return mounted ? createPortal(children, document.body) : null;
+}
 
 export default function ProductDetailModal({ productId, onClose }) {
   const [loading, setLoading] = useState(false);
@@ -183,10 +196,11 @@ export default function ProductDetailModal({ productId, onClose }) {
   const stockStatus = getStockStatus(stock);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
-      onClick={onClose}
-    >
+    <ClientPortal>
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/75 backdrop-blur-sm transition-opacity duration-300 animate-fade-in"
+        onClick={onClose}
+      >
       <div
         className="glass-panel w-full max-w-5xl rounded-3xl border border-slate-800/80 max-h-[90vh] overflow-y-auto shadow-2xl relative transition-all duration-300 transform scale-in"
         onClick={(e) => e.stopPropagation()}
@@ -543,5 +557,6 @@ export default function ProductDetailModal({ productId, onClose }) {
         ) : null}
       </div>
     </div>
+    </ClientPortal>
   );
 }
