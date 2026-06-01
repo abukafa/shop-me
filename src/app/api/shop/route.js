@@ -25,16 +25,40 @@ export async function GET(request) {
       });
     }
 
-    const shopInfo = await shopee.getShopInfo(
-      shopeeToken.shopId,
-      shopeeToken.accessToken,
-    );
+    let shopInfo = null;
+    let isExpired = false;
+
+    try {
+      shopInfo = await shopee.getShopInfo(
+        shopeeToken.shopId,
+        shopeeToken.accessToken,
+      );
+
+      if (shopInfo?.error) {
+        isExpired = true;
+      }
+    } catch (apiError) {
+      console.error("Gagal memanggil getShopInfo Shopee:", apiError.message);
+      // Jika request API gagal (misal token cacat/expired sehingga signature/auth ditolak Axios)
+      isExpired = true;
+    }
+
+    // Jika belum expired tapi sudah lewat 4 jam, tetap set expired
+    if (!isExpired && (Date.now() - new Date(shopeeToken.updatedAt).getTime() > 4 * 60 * 60 * 1000)) {
+      isExpired = true;
+    }
+
     return NextResponse.json({
       isConnected: true,
       shopInfo,
       shopId: shopeeToken.shopId,
+      isExpired,
+      updatedAt: shopeeToken.updatedAt,
     });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ 
+      isConnected: false, 
+      error: error.message 
+    });
   }
 }

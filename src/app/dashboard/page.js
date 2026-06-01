@@ -1,31 +1,83 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ShoppingBag, Receipt, Users, Key, ExternalLink } from "lucide-react";
+import {
+  ShoppingBag,
+  Receipt,
+  Users,
+  Key,
+  ExternalLink,
+  AlertTriangle,
+  RefreshCw,
+} from "lucide-react";
 import StatCard from "@/components/dashboard/stat-card";
+import RefreshStatusModal from "@/components/dashboard/RefreshStatusModal";
 
 export default function DashboardOverview() {
   const [shop, setShop] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function checkConnection() {
-      try {
-        const res = await fetch("/api/shop");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.isConnected) {
-            setShop(data);
-          }
+  // States for token refresh
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshModalOpen, setRefreshModalOpen] = useState(false);
+  const [refreshStatus, setRefreshStatus] = useState("");
+  const [refreshError, setRefreshError] = useState("");
+
+  const checkConnection = async () => {
+    try {
+      const res = await fetch("/api/shop");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isConnected) {
+          setShop(data);
+        } else {
+          setShop(null);
         }
-      } catch (err) {
-        console.error("Failed to load shop info", err);
-      } finally {
-        setLoading(false);
       }
+    } catch (err) {
+      console.error("Failed to load shop info", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     checkConnection();
   }, []);
+
+  const handleRefreshToken = async () => {
+    setRefreshing(true);
+    setRefreshError("");
+    setRefreshStatus("");
+
+    try {
+      const res = await fetch("/api/shopee/refresh");
+      const data = await res.json();
+
+      if (res.ok) {
+        setRefreshStatus("success");
+      } else {
+        setRefreshStatus("error");
+        setRefreshError(
+          data.error || data.message || "Gagal menyegarkan token Shopee.",
+        );
+      }
+    } catch (err) {
+      setRefreshStatus("error");
+      setRefreshError(err.message || "Gagal menyegarkan token Shopee.");
+    } finally {
+      setRefreshing(false);
+      setRefreshModalOpen(true);
+    }
+  };
+
+  const handleCloseRefreshModal = () => {
+    setRefreshModalOpen(false);
+    if (refreshStatus === "success") {
+      // Reload page to get fresh Shopee connection state and reload dashboard data
+      window.location.reload();
+    }
+  };
 
   if (loading) {
     return (
@@ -72,39 +124,100 @@ export default function DashboardOverview() {
             />
           </div>
 
-          <div className="glass-panel p-8 rounded-3xl border border-slate-800 relative overflow-hidden">
-            <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-glow-orange opacity-40 pointer-events-none" />
-            <div className="z-10 relative flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-5 text-left">
-                <div className="h-16 w-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-3xl">
-                  🏪
+          {/* DYNAMIC CARD: Connected but Expired (Needs Refresh) */}
+          {shop.isExpired ? (
+            <div className="glass-panel p-8 rounded-3xl border border-amber-500/30 bg-amber-500/5 relative overflow-hidden">
+              <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-amber-500/10 pointer-events-none" />
+              <div className="z-10 relative flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-5 text-left">
+                  <div className="h-16 w-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl">
+                    ⚠️
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-xl text-amber-200">
+                      Sesi Koneksi Shopee Kedaluwarsa
+                    </h3>
+                    <p className="text-slate-400 text-xs mt-1.5 leading-relaxed max-w-xl">
+                      Token akses API Shopee Anda kedaluwarsa setelah 4 jam demi
+                      keamanan. Silakan segarkan (refresh) token Anda untuk
+                      memulihkan sinkronisasi data otomatis dengan Shopee.
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-2 font-mono uppercase tracking-wider">
+                      ID TOKO: {shop.shopId} | Terakhir Diperbarui:{" "}
+                      {new Date(shop.updatedAt).toLocaleString("id-ID")}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-bold text-xl text-white">
-                    {shop.shopInfo?.shop_name || "Toko Shopee"}
-                  </h3>
-                  <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
-                    ID TOKO: {shop.shopId}
-                  </p>
-                  <p className="text-xs text-green-400 font-medium mt-1 inline-flex items-center gap-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
-                    Koneksi API Aktif
-                  </p>
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  <button
+                    onClick={handleRefreshToken}
+                    disabled={refreshing}
+                    className="px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw
+                      size={16}
+                      className={refreshing ? "animate-spin" : ""}
+                    />
+                    {refreshing ? "Menyegarkan..." : "Segarkan Token"}
+                  </button>
+                  <a
+                    href="/api/shopee/auth"
+                    className="px-5 py-3 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-300 font-semibold text-sm flex items-center justify-center gap-2 transition-all"
+                  >
+                    <Key size={16} />
+                    Hubungkan Ulang
+                  </a>
                 </div>
-              </div>
-              <div>
-                <a
-                  href="/api/shopee/auth"
-                  className="px-5 py-3 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-sm font-semibold flex items-center gap-2 transition-all"
-                >
-                  <Key size={16} />
-                  Hubungkan Ulang Toko
-                </a>
               </div>
             </div>
-          </div>
+          ) : (
+            /* DYNAMIC CARD: Connected and Active */
+            <div className="glass-panel p-8 rounded-3xl border border-slate-800 relative overflow-hidden">
+              <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-glow-orange opacity-40 pointer-events-none" />
+              <div className="z-10 relative flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-5 text-left">
+                  <div className="h-16 w-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-3xl">
+                    🏪
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-xl text-white">
+                      {shop.shopInfo?.shop_name || "Toko Shopee"}
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-400 mt-1 uppercase tracking-wider">
+                      ID TOKO: {shop.shopId}
+                    </p>
+                    <p className="text-xs text-green-400 font-medium mt-1 inline-flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-green-400"></span>
+                      Koneksi API Aktif
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                  <button
+                    onClick={handleRefreshToken}
+                    disabled={refreshing}
+                    className="px-5 py-3 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-900 text-slate-300 font-semibold text-sm flex items-center justify-center gap-2 transition-all active:scale-95"
+                  >
+                    <RefreshCw
+                      size={16}
+                      className={refreshing ? "animate-spin" : ""}
+                    />
+                    Refresh Token
+                  </button>
+                  <a
+                    href="/api/shopee/auth"
+                    className="px-5 py-3 rounded-xl border border-slate-750 bg-slate-950/40 hover:bg-slate-900 hover:text-white text-slate-400 text-sm font-semibold flex items-center justify-center gap-2 transition-all border-dashed"
+                  >
+                    <Key size={16} />
+                    Hubungkan Ulang Toko
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       ) : (
+        /* DYNAMIC CARD: Not Connected */
         <div className="glass-panel p-10 rounded-3xl border border-slate-800/80 text-center relative overflow-hidden max-w-2xl mx-auto mt-10">
           <div className="absolute top-[-20%] right-[-20%] w-[300px] h-[300px] rounded-full bg-glow-orange opacity-30 pointer-events-none" />
 
@@ -130,6 +243,14 @@ export default function DashboardOverview() {
           </a>
         </div>
       )}
+
+      {/* Status Modal for Token Refresh */}
+      <RefreshStatusModal
+        isOpen={refreshModalOpen}
+        status={refreshStatus}
+        error={refreshError}
+        onClose={handleCloseRefreshModal}
+      />
     </div>
   );
 }
