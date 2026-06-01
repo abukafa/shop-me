@@ -29,7 +29,58 @@ export async function GET(request) {
       shopeeToken.shopId,
       shopeeToken.accessToken,
     );
-    return NextResponse.json(products);
+
+    // Enrich products with details (name, stock, price, etc.)
+    const itemIds = products?.response?.item?.map((i) => i.item_id) || [];
+    let enrichedItems = [];
+    
+    if (itemIds.length > 0) {
+      try {
+        const details = await shopee.getItemBaseInfo(
+          shopeeToken.shopId,
+          shopeeToken.accessToken,
+          itemIds,
+        );
+        const detailList = details?.response?.item_list || [];
+        const detailMap = new Map(detailList.map((item) => [item.item_id, item]));
+
+        enrichedItems = products.response.item.map((item) => {
+          const detail = detailMap.get(item.item_id);
+          return {
+            ...item,
+            item_name: detail?.item_name || "Nama Tidak Tersedia",
+            price:
+              detail?.price_info?.[0]?.current_price ??
+              detail?.price_info?.current_price ??
+              detail?.price ??
+              0,
+            stock:
+              detail?.stock_info_v2?.summary_info?.total_available_stock ??
+              detail?.stock_info_v2?.total_available_stock ??
+              detail?.stock ??
+              0,
+            image:
+              detail?.image?.image_url_list?.[0] ||
+              detail?.image?.image_url ||
+              detail?.image_url ||
+              null,
+          };
+        });
+      } catch (enrichError) {
+        console.error("Gagal melakukan enrichment produk:", enrichError.message);
+        enrichedItems = products.response.item;
+      }
+    }
+
+    const responseData = {
+      ...products,
+      response: {
+        ...products?.response,
+        item: enrichedItems.length > 0 ? enrichedItems : (products?.response?.item || []),
+      },
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

@@ -55,33 +55,56 @@ export async function GET(request) {
 
     const detailedOrders = orderDetailsResponse?.response?.order_list || [];
 
-    const filteredOrders = detailedOrders.filter((order) => {
-      const phone = order.recipient_address?.phone;
-      return phone && phone.trim() !== "";
-    });
+    const customerMap = {};
 
-    const customers = filteredOrders.map((order) => {
+    detailedOrders.forEach((order) => {
+      // Group by buyer_user_id, with fallback to buyer_username or guest tracking
+      const buyerId = order.buyer_user_id ? String(order.buyer_user_id) : (order.buyer_username || `guest_${order.order_sn}`);
       const addr = order.recipient_address || {};
+      const phone = addr.phone || "";
+      
       const fullAddress =
         addr.full_address ||
         [addr.town, addr.district, addr.city, addr.state, addr.zipcode]
           .filter(Boolean)
           .join(", ");
 
-      return {
+      if (!customerMap[buyerId]) {
+        customerMap[buyerId] = {
+          buyer_user_id: buyerId,
+          buyer_username: order.buyer_username || "Unknown",
+          customer_name: addr.name || "Unknown",
+          phone: phone,
+          full_address: fullAddress || "No address provided",
+          total_spent: 0,
+          total_orders: 0,
+          orders: []
+        };
+      }
+
+      // Aggregate spend and order count
+      customerMap[buyerId].total_spent += order.total_amount || 0;
+      customerMap[buyerId].total_orders += 1;
+      
+      // Save order details to the customer's shopping history
+      customerMap[buyerId].orders.push({
         order_sn: order.order_sn,
         order_status: order.order_status,
-        customer_name: addr.name || "Unknown",
-        phone: addr.phone,
-        full_address: fullAddress || "No address provided",
-      };
+        total_amount: order.total_amount || 0,
+        create_time: order.create_time,
+        shipping_carrier: order.shipping_carrier || "-",
+        payment_method: order.payment_method || "-",
+        items: order.item_list || []
+      });
     });
+
+    const customers = Object.values(customerMap);
 
     return NextResponse.json({
       success: true,
-      count: filteredOrders.length,
+      count: customers.length,
       customers,
-      orders: filteredOrders,
+      orders: detailedOrders,
     });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

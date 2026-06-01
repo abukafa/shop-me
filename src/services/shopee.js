@@ -189,7 +189,7 @@ class ShopeeService {
       `&shop_id=${shopId}` +
       `&sign=${sign}` +
       `&order_sn_list=${orderSns}` +
-      `&response_optional_fields=recipient_address`;
+      `&response_optional_fields=recipient_address,shipping_carrier,total_amount,payment_method,item_list`;
 
     const { data } = await axios.get(url);
     return data;
